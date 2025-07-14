@@ -1,3 +1,10 @@
+# to run locally: streamlit run dew-point-vent-app.py
+# streamlit run ~/projects/kri-local-rag/python-scripts/dew-point-vent-app.py
+
+# This script is a simple tool to help you decide whether to ventilate your home based on the current indoor and outdoor conditions.
+# It calculates the dew point for both indoor and outdoor and displays them in a heatmap.
+# It also provides a suggestion for HRV homeowners, based on the difference between the indoor and outdoor dew points.
+
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
@@ -18,8 +25,8 @@ def calculate_dew_point(temp_c: float, rh: float) -> float:
 # ---------------------------------------------------------------------------
 # Grid definition — higher resolution for "middle" values
 # ---------------------------------------------------------------------------
-temperatures = np.arange(15.0, 28.5, 0.5)  # 0.5 °C steps for finer precision
-humidities = np.arange(55.0, 79.0, 1.0)  # 1 % RH steps
+temperatures = np.arange(15.0, 28.5, 1.0)  # 0.5 °C steps for finer precision
+humidities = np.arange(50.0, 79.0, 4)  # 1 % RH steps
 
 # Compute dew‑point matrix
 dew_points = np.empty((len(humidities), len(temperatures)))
@@ -31,7 +38,7 @@ for i, rh in enumerate(humidities):
 text_labels = np.empty_like(dew_points, dtype=object)
 for i in range(len(humidities)):
     for j in range(len(temperatures)):
-        text_labels[i, j] = f"{dew_points[i, j]:.2f}"
+        text_labels[i, j] = f"{dew_points[i, j]:.0f}"
 
 # ---------------------------------------------------------------------------
 # Streamlit UI
@@ -76,7 +83,7 @@ fig = go.Figure(
         hovertemplate=("Temperature: %{x:.1f}°C<br>" "Humidity: %{y:.0f}%<br>" "Dew Point: %{z:.2f}°C<extra></extra>"),
         text=text_labels,
         texttemplate="%{text}",
-        textfont={"size": 10, "color": "black"},
+        textfont={"size": 8, "color": "black"},
     )
 )
 
@@ -88,12 +95,12 @@ fig.update_layout(
 )
 
 # Reduce the number of tick labels on both axes
-x_tick_step = 2  # Show every 2nd temperature
-y_tick_step = 4  # Show every 4th humidity
+x_tick_step = 1  # Show every 2nd temperature
+y_tick_step = 1  # Show every 4th humidity
 
 fig.update_xaxes(
     tickvals=temperatures[::x_tick_step],
-    ticktext=[f"{t:.1f}" for t in temperatures[::x_tick_step]],
+    ticktext=[f"{t:.0f}" for t in temperatures[::x_tick_step]],
     tickangle=0,
     title_font=dict(size=20),  # Increase axis label font size
     tickfont=dict(size=16),  # Increase tick label font size
@@ -126,7 +133,7 @@ fig.add_trace(
         marker=dict(size=18, color="green", line=dict(width=2, color="black")),
         name="Indoor",
         text=[f"Indoor\nDP: {indoor_dp:.2f}°C"],
-        textposition="top right",
+        textposition="top center",
         textfont=dict(size=12, color="black"),
         hovertemplate=(
             f"<b>Indoor</b><br>Temp: %{{x:.1f}}°C<br>RH: %{{y:.0f}}%<br>" f"Dew Point: {indoor_dp:.2f}°C<extra></extra>"
@@ -141,7 +148,7 @@ fig.add_trace(
         marker=dict(size=18, color="blue", line=dict(width=2, color="black")),
         name="Outdoor",
         text=[f"Outdoor\nDP: {outdoor_dp:.2f}°C"],
-        textposition="bottom left",
+        textposition="top center",
         textfont=dict(size=12, color="black"),
         hovertemplate=(
             f"<b>Outdoor</b><br>Temp: %{{x:.1f}}°C<br>RH: %{{y:.0f}}%<br>"
