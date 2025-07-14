@@ -208,24 +208,26 @@ def get_js_geolocation():
 # --- Outdoor weather fetch ---
 # Try to get user location via JS eval
 loc = get_js_geolocation()
-st.write(f"DEBUG: js geolocation returned: {loc}")  # Show raw geolocation result for debugging
+# st.write(
+#    f"DEBUG: js geolocation returned: {loc}"
+# )   Show raw geolocation result for debugging
 use_gps = False
 location_name = None
 if loc and loc.get("latitude") and loc.get("longitude"):
     lat = loc["latitude"]
     lon = loc["longitude"]
     location_name = reverse_geocode(lat, lon)
-    if location_name:
-        st.success(f"Detected location: {location_name}")
-    else:
-        st.success(f"Detected location: {lat:.4f}, {lon:.4f}")
+    #    if location_name:
+    #        st.success(f"Detected location: {location_name}")
+    #    else:
+    #        st.success(f"Detected location: {lat:.4f}, {lon:.4f}")
     use_gps = True
 elif loc and loc.get("error"):
     st.warning(f"Geolocation error: {loc['error']}")
 else:
     st.info("Allow location access to auto-detect your weather, or enter a city name below.")
 
-city = st.text_input("City name for outdoor weather", value="Pirita, Estonia")
+city = st.text_input("City name for outdoor weather", value="Viimsi, Estonia")
 
 # Use session_state to store last fetched city and weather
 if "last_city" not in st.session_state:
@@ -478,21 +480,37 @@ fig.update_layout(
 
 # Only show plot and results if the weather fetch was successful
 if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
-    # Ultra-compact all-in-one table for mobile
+    # Ultra-compact single-row table for mobile
     label_6h = forecast_6h[2][11:16] if forecast_6h else ""
     label_12h = forecast_12h[2][11:16] if forecast_12h else ""
     all_table = [
-        ["Now", label_6h, label_12h, "Indoor DP", "Outdoor DP", "HRV?"],
         [
-            (f"{outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%" if outdoor_temp_fetched is not None else ""),
-            f"{forecast_6h[0]:.1f}°C, {forecast_6h[1]:.0f}%" if forecast_6h else "",
-            f"{forecast_12h[0]:.1f}°C, {forecast_12h[1]:.0f}%" if forecast_12h else "",
-            f"{indoor_dp:.1f}°C",
-            f"{outdoor_dp:.1f}°C",
+            (
+                f"Now: {outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%"
+                if outdoor_temp_fetched is not None
+                else ""
+            ),
+            (f"+6h: {forecast_6h[0]:.1f}°C, {forecast_6h[1]:.0f}%" if forecast_6h else ""),
+            (f"+12h: {forecast_12h[0]:.1f}°C, {forecast_12h[1]:.0f}%" if forecast_12h else ""),
+            f"Indoor DP: {indoor_dp:.1f}°C",
+            f"Outdoor DP: {outdoor_dp:.1f}°C",
             "✅" if outdoor_dp <= indoor_dp - 2 else "❌",
         ],
     ]
-    st.table(all_table)
+    # Custom HTML table for mobile
+    labels = ["Now", "+6h", "+12h", "Indoor DP", "Outdoor DP", "HRV?"]
+    row = all_table[0]
+    table_html = f"""
+    <table style='width:100%; font-size:1.1em; text-align:center;'>
+      <tr>
+        {''.join(f'<th>{label}</th>' for label in labels)}
+      </tr>
+      <tr>
+        {''.join(f'<td>{cell}</td>' for cell in row)}
+      </tr>
+    </table>
+    """
+    st.markdown(table_html, unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.error("City not found or API error.")
@@ -508,3 +526,15 @@ It calculates the dew point for both indoor and outdoor and displays them in a h
 It also provides a suggestion for HRV homeowners, based on the difference between the indoor and outdoor dew points.
 """
 )
+
+# Show detected location at the very bottom
+if location_name:
+    st.markdown(
+        f"<div style='text-align:center; color:gray; font-size:0.95em; margin-top:2em;'>Detected location: {location_name}</div>",
+        unsafe_allow_html=True,
+    )
+elif use_gps:
+    st.markdown(
+        f"<div style='text-align:center; color:gray; font-size:0.95em; margin-top:2em;'>Detected location: {lat:.4f}, {lon:.4f}</div>",
+        unsafe_allow_html=True,
+    )
