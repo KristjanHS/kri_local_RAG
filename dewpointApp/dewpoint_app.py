@@ -16,7 +16,9 @@ import pandas as pd
 # Load API key from .env file
 # ---------------------------------------------------------------------------
 load_dotenv()
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
+# Try Streamlit secrets first, then environment variable (for local .env)
+OPENWEATHER_API_KEY = st.secrets.get("OPENWEATHER_API_KEY") or os.getenv("OPENWEATHER_API_KEY")
 if not OPENWEATHER_API_KEY:
     st.warning("OpenWeatherMap API key not found. Please add OPENWEATHER_API_KEY to your .env file.")
 
