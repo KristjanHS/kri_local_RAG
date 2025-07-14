@@ -8,6 +8,30 @@
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+import requests
+import os
+from dotenv import load_dotenv
+
+# ---------------------------------------------------------------------------
+# Load API key from .env file
+# ---------------------------------------------------------------------------
+load_dotenv()
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+if not OPENWEATHER_API_KEY:
+    st.warning("OpenWeatherMap API key not found. Please add OPENWEATHER_API_KEY to your .env file.")
+
+
+def get_weather(city, api_key):
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid={api_key}"
+    resp = requests.get(url)
+    if resp.status_code == 200:
+        data = resp.json()
+        temp = data["main"]["temp"]
+        humidity = data["main"]["humidity"]
+        return temp, humidity
+    else:
+        return None, None
+
 
 # ---------------------------------------------------------------------------
 # Dew‑point calculation using Magnus‑Tetens approximation
@@ -25,8 +49,8 @@ def calculate_dew_point(temp_c: float, rh: float) -> float:
 # ---------------------------------------------------------------------------
 # Grid definition — higher resolution for "middle" values
 # ---------------------------------------------------------------------------
-temperatures = np.arange(15.0, 28.5, 1.0)  # 0.5 °C steps for finer precision
-humidities = np.arange(50.0, 79.0, 4)  # 1 % RH steps
+temperatures = np.arange(15.0, 28.5, 1.0)  # 1 °C steps for finer precision
+humidities = np.arange(50.0, 79.0, 4)  # 4 % RH steps
 
 # Compute dew‑point matrix
 dew_points = np.empty((len(humidities), len(temperatures)))
@@ -51,13 +75,41 @@ It calculates the dew point for both indoor and outdoor air and visualizes them 
 """
 )
 
+# --- Outdoor weather fetch ---
+st.markdown("### Get outdoor weather for your city")
+city = st.text_input("City name for outdoor weather", "")
+outdoor_temp_fetched = None
+outdoor_rh_fetched = None
+if city:
+    if st.button("Fetch weather for city"):
+        temp, humidity = get_weather(city, OPENWEATHER_API_KEY)
+        if temp is not None:
+            st.success(f"Outdoor in {city}: {temp:.1f}°C, {humidity:.0f}% RH")
+            outdoor_temp_fetched = temp
+            outdoor_rh_fetched = humidity
+        else:
+            st.error("City not found or API error.")
+
 col1, col2 = st.columns(2)
 with col1:
-    indoor_temp = st.number_input("Indoor temperature (°C)", min_value=10.0, max_value=40.0, value=25.0, step=0.5)
-    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
+    indoor_temp = st.number_input("Indoor temperature (°C)", min_value=0.0, max_value=40.0, value=21.0, step=0.1)
+    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
 with col2:
-    outdoor_temp = st.number_input("Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=20.0, step=0.5)
-    outdoor_rh = st.number_input("Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=65.0, step=1.0)
+    # If fetched values exist, use them as defaults
+    if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
+        outdoor_temp = st.number_input(
+            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=float(outdoor_temp_fetched), step=0.1
+        )
+        outdoor_rh = st.number_input(
+            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=float(outdoor_rh_fetched), step=0.1
+        )
+    else:
+        outdoor_temp = st.number_input(
+            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=10.0, step=0.1
+        )
+        outdoor_rh = st.number_input(
+            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1
+        )
 
 # Calculate dew points
 indoor_dp = calculate_dew_point(indoor_temp, indoor_rh)
@@ -95,8 +147,8 @@ fig.update_layout(
 )
 
 # Reduce the number of tick labels on both axes
-x_tick_step = 1  # Show every 2nd temperature
-y_tick_step = 1  # Show every 4th humidity
+x_tick_step = 1  # Show every temperature
+y_tick_step = 1  # Show every humidity
 
 fig.update_xaxes(
     tickvals=temperatures[::x_tick_step],
