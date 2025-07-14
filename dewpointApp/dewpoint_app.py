@@ -170,7 +170,7 @@ if "forecast_12h" not in st.session_state:
 if "debug_info" not in st.session_state:
     st.session_state["debug_info"] = ""
 
-city = st.text_input("City name for outdoor weather", value="Tallinn")
+city = st.text_input("City name for outdoor weather", value="Pirita, Estonia")
 
 # Only fetch if city changed
 if city and city != st.session_state["last_city"]:
