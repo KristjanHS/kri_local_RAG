@@ -283,7 +283,7 @@ fig.add_trace(
         name="Indoor",
         text=[f"Indoor\nDP: {indoor_dp:.2f}°C"],
         textposition="top center",
-        textfont=dict(size=12, color="black"),
+        textfont=dict(size=12, color="white", weight="bold"),
         hovertemplate=(
             f"<b>Indoor</b><br>Temp: %{{x:.1f}}°C<br>RH: %{{y:.0f}}%<br>" f"Dew Point: {indoor_dp:.2f}°C<extra></extra>"
         ),
@@ -298,7 +298,7 @@ fig.add_trace(
         name="Outdoor",
         text=[f"Outdoor\nDP: {outdoor_dp:.2f}°C"],
         textposition="top center",
-        textfont=dict(size=12, color="black"),
+        textfont=dict(size=12, color="white", weight="bold"),
         hovertemplate=(
             f"<b>Outdoor</b><br>Temp: %{{x:.1f}}°C<br>RH: %{{y:.0f}}%<br>"
             f"Dew Point: {outdoor_dp:.2f}°C<extra></extra>"
@@ -323,7 +323,7 @@ if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
     label_6h = forecast_6h[2][11:16] if forecast_6h else ""
     label_12h = forecast_12h[2][11:16] if forecast_12h else ""
     all_table = [
-        ["Now", label_6h, label_12h, "Indoor DP", "Outdoor DP", "Vent?"],
+        ["Now", label_6h, label_12h, "Indoor DP", "Outdoor DP", "HRV?"],
         [
             f"{outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%" if outdoor_temp_fetched is not None else "",
             f"{forecast_6h[0]:.1f}°C, {forecast_6h[1]:.0f}%" if forecast_6h else "",
