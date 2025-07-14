@@ -46,7 +46,7 @@ for i in range(len(humidities)):
 st.title("Dew Point Ventilation Advisor")
 st.markdown(
     """
-This tool helps you decide whether to ventilate your home based on current indoor and outdoor conditions.\
+This tool helps you decide whether to ventilate your home with HRV, based on current indoor and outdoor conditions.\
 It calculates the dew point for both indoor and outdoor air and visualizes them on a heatmap.
 """
 )
@@ -175,8 +175,8 @@ st.subheader("Results")
 st.write(f"**Indoor dew point:** {indoor_dp:.2f}°C")
 st.write(f"**Outdoor dew point:** {outdoor_dp:.2f}°C")
 if outdoor_dp <= indoor_dp - 2:
-    st.success("✅ Ventilate (outdoor dew point is at least 2°C lower)")
+    st.success("✅ Ventilate - HRV to med/high speed (outdoor dew point is at least 2°C lower)")
 else:
-    st.warning("❌ Do NOT ventilate (outdoor dew point is not 2°C lower)")
+    st.warning("❌ Do NOT ventilate - HRV to lowest speed! (outdoor dew point is not 2°C lower)")
 
 st.plotly_chart(fig, use_container_width=True)
