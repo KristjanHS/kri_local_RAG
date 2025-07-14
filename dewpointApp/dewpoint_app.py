@@ -319,42 +319,19 @@ fig.update_layout(
 
 # Only show plot and results if the weather fetch was successful
 if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
-    # Ultra-compact weather row
-    weather_times = ["Now", "+6h", "+12h"]
-    weather_temps = [
-        f"{outdoor_temp_fetched:.1f}°C" if outdoor_temp_fetched is not None else "",
-        f"{forecast_6h[0]:.1f}°C" if forecast_6h else "",
-        f"{forecast_12h[0]:.1f}°C" if forecast_12h else "",
+    # Ultra-compact all-in-one table for mobile
+    all_table = [
+        ["Now", "+6h", "+12h", "Indoor DP", "Outdoor DP", "Vent?"],
+        [
+            f"{outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%" if outdoor_temp_fetched is not None else "",
+            f"{forecast_6h[0]:.1f}°C, {forecast_6h[1]:.0f}%" if forecast_6h else "",
+            f"{forecast_12h[0]:.1f}°C, {forecast_12h[1]:.0f}%" if forecast_12h else "",
+            f"{indoor_dp:.1f}°C",
+            f"{outdoor_dp:.1f}°C",
+            "✅" if outdoor_dp <= indoor_dp - 2 else "❌",
+        ],
     ]
-    weather_humids = [
-        f"{outdoor_rh_fetched:.0f}%" if outdoor_rh_fetched is not None else "",
-        f"{forecast_6h[1]:.0f}%" if forecast_6h else "",
-        f"{forecast_12h[1]:.0f}%" if forecast_12h else "",
-    ]
-    wcol1, wcol2, wcol3 = st.columns(3)
-    with wcol1:
-        st.caption(weather_times[0])
-        st.write(f"{weather_temps[0]}, {weather_humids[0]}")
-    with wcol2:
-        st.caption(weather_times[1])
-        st.write(f"{weather_temps[1]}, {weather_humids[1]}")
-    with wcol3:
-        st.caption(weather_times[2])
-        st.write(f"{weather_temps[2]}, {weather_humids[2]}")
-
-    # Ultra-compact results row
-    rcol1, rcol2, rcol3 = st.columns(3)
-    with rcol1:
-        st.caption("Indoor DP")
-        st.write(f"{indoor_dp:.1f}°C")
-    with rcol2:
-        st.caption("Outdoor DP")
-        st.write(f"{outdoor_dp:.1f}°C")
-    with rcol3:
-        if outdoor_dp <= indoor_dp - 2:
-            st.success("Ventilate")
-        else:
-            st.warning("No vent")
+    st.table(all_table)
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.error("City not found or API error.")
