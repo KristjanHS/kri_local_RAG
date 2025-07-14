@@ -1,4 +1,5 @@
-# to run locally: go to app folder and: streamlit run dew-point-vent-app.py
+# to run locally: go to app folder and: streamlit run dewpoint_app.py
+# for https: also run:  ngrok http 8501
 
 # This Streamlit app helps you decide whether to run HRV, based on indoor and outdoor temp and humidity.
 # It calculates the dew point for both indoor and outdoor and displays them in a heatmap.
@@ -11,6 +12,7 @@ import streamlit as st
 import requests
 import os
 from dotenv import load_dotenv
+from streamlit_geolocation import streamlit_geolocation
 
 # ---------------------------------------------------------------------------
 # Load API key from .env file
@@ -54,10 +56,24 @@ def get_weather(city, api_key):
             now = datetime.utcnow()
             target_6h = now + timedelta(hours=6)
             target_12h = now + timedelta(hours=12)
-            closest_6h = min(forecast_data["list"], key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_6h))
-            closest_12h = min(forecast_data["list"], key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_12h))
-            forecast_6h = (closest_6h["main"]["temp"], closest_6h["main"]["humidity"], closest_6h["dt_txt"])
-            forecast_12h = (closest_12h["main"]["temp"], closest_12h["main"]["humidity"], closest_12h["dt_txt"])
+            closest_6h = min(
+                forecast_data["list"],
+                key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_6h),
+            )
+            closest_12h = min(
+                forecast_data["list"],
+                key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_12h),
+            )
+            forecast_6h = (
+                closest_6h["main"]["temp"],
+                closest_6h["main"]["humidity"],
+                closest_6h["dt_txt"],
+            )
+            forecast_12h = (
+                closest_12h["main"]["temp"],
+                closest_12h["main"]["humidity"],
+                closest_12h["dt_txt"],
+            )
         return temp, humidity, forecast_6h, forecast_12h, debug_info
     # Try replacing ', ' with ',' and with country code if not found
     if "," in city:
@@ -91,13 +107,23 @@ def get_weather(city, api_key):
                     target_6h = now + timedelta(hours=6)
                     target_12h = now + timedelta(hours=12)
                     closest_6h = min(
-                        forecast_data["list"], key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_6h)
+                        forecast_data["list"],
+                        key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_6h),
                     )
                     closest_12h = min(
-                        forecast_data["list"], key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_12h)
+                        forecast_data["list"],
+                        key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_12h),
                     )
-                    forecast_6h = (closest_6h["main"]["temp"], closest_6h["main"]["humidity"], closest_6h["dt_txt"])
-                    forecast_12h = (closest_12h["main"]["temp"], closest_12h["main"]["humidity"], closest_12h["dt_txt"])
+                    forecast_6h = (
+                        closest_6h["main"]["temp"],
+                        closest_6h["main"]["humidity"],
+                        closest_6h["dt_txt"],
+                    )
+                    forecast_12h = (
+                        closest_12h["main"]["temp"],
+                        closest_12h["main"]["humidity"],
+                        closest_12h["dt_txt"],
+                    )
                 return temp, humidity, forecast_6h, forecast_12h, debug_info
     return None, None, None, None, debug_info
 
@@ -147,8 +173,40 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+def reverse_geocode(lat, lon):
+    try:
+        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+        resp = requests.get(url, headers={"User-Agent": "dewpoint-app/1.0"})
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("display_name")
+    except Exception:
+        pass
+    return None
+
+
 # --- Outdoor weather fetch ---
-# st.markdown("### Get outdoor weather for your city")
+# Try to get user location via geolocation
+loc = streamlit_geolocation()
+st.write(f"DEBUG: geolocation() returned: {loc}")  # Show raw geolocation result for debugging
+use_gps = False
+location_name = None
+if loc is None:
+    st.info("Waiting for location permission...")
+elif loc.get("latitude") and loc.get("longitude"):
+    lat = loc["latitude"]
+    lon = loc["longitude"]
+    location_name = reverse_geocode(lat, lon)
+    if location_name:
+        st.success(f"Detected location: {location_name}")
+    else:
+        st.success(f"Detected location: {lat:.4f}, {lon:.4f}")
+    use_gps = True
+else:
+    st.info("Allow location access to auto-detect your weather, or enter a city name below.")
+
+city = st.text_input("City name for outdoor weather", value="Pirita, Estonia")
 
 # Use session_state to store last fetched city and weather
 if "last_city" not in st.session_state:
@@ -164,10 +222,70 @@ if "forecast_12h" not in st.session_state:
 if "debug_info" not in st.session_state:
     st.session_state["debug_info"] = ""
 
-city = st.text_input("City name for outdoor weather", value="Pirita, Estonia")
 
-# Only fetch if city changed
-if city and city != st.session_state["last_city"]:
+def fetch_weather_by_gps(lat, lon, api_key):
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={api_key}"
+    resp = requests.get(url)
+    debug_info = f"URL tried: {url}\nStatus code: {resp.status_code}\nResponse: {resp.text}\n"
+    if resp.status_code == 200:
+        data = resp.json()
+        temp = data["main"]["temp"]
+        humidity = data["main"]["humidity"]
+        # Fetch forecast for +6h and +12h
+        forecast_url = (
+            f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}" f"&units=metric&appid={api_key}"
+        )
+        forecast_resp = requests.get(forecast_url)
+        debug_info += (
+            f"Forecast URL tried: {forecast_url}\nStatus code: {forecast_resp.status_code}\n"
+            f"Response: {forecast_resp.text[:300]}...\n"
+        )
+        forecast_6h = forecast_12h = None
+        if forecast_resp.status_code == 200:
+            forecast_data = forecast_resp.json()
+            from datetime import datetime, timedelta
+
+            now = datetime.utcnow()
+            target_6h = now + timedelta(hours=6)
+            target_12h = now + timedelta(hours=12)
+            closest_6h = min(
+                forecast_data["list"],
+                key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_6h),
+            )
+            closest_12h = min(
+                forecast_data["list"],
+                key=lambda x: abs(datetime.fromtimestamp(x["dt"]) - target_12h),
+            )
+            forecast_6h = (
+                closest_6h["main"]["temp"],
+                closest_6h["main"]["humidity"],
+                closest_6h["dt_txt"],
+            )
+            forecast_12h = (
+                closest_12h["main"]["temp"],
+                closest_12h["main"]["humidity"],
+                closest_12h["dt_txt"],
+            )
+        return temp, humidity, forecast_6h, forecast_12h, debug_info
+    return None, None, None, None, debug_info
+
+
+# Only fetch if city changed or GPS is used
+if use_gps:
+    temp, humidity, forecast_6h, forecast_12h, debug_info = fetch_weather_by_gps(lat, lon, OPENWEATHER_API_KEY)
+    st.session_state["last_city"] = f"GPS:{lat},{lon}"
+    st.session_state["debug_info"] = debug_info
+    if temp is not None:
+        st.session_state["outdoor_temp_fetched"] = temp
+        st.session_state["outdoor_rh_fetched"] = humidity
+        st.session_state["forecast_6h"] = forecast_6h
+        st.session_state["forecast_12h"] = forecast_12h
+    else:
+        st.session_state["outdoor_temp_fetched"] = None
+        st.session_state["outdoor_rh_fetched"] = None
+        st.session_state["forecast_6h"] = None
+        st.session_state["forecast_12h"] = None
+elif city and city != st.session_state["last_city"]:
     temp, humidity, forecast_6h, forecast_12h, debug_info = get_weather(city, OPENWEATHER_API_KEY)
     st.session_state["last_city"] = city
     st.session_state["debug_info"] = debug_info
@@ -192,22 +310,44 @@ debug_info = st.session_state["debug_info"]
 col1, col2 = st.columns(2)
 with col1:
     indoor_temp = st.number_input("Indoor temperature (°C)", min_value=0.0, max_value=40.0, value=25.0, step=0.5)
-    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
+    indoor_rh = st.number_input(
+        "Indoor relative humidity (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=60.0,
+        step=1.0,
+    )
 with col2:
     # If fetched values exist, use them as defaults
     if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
         outdoor_temp = st.number_input(
-            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=float(outdoor_temp_fetched), step=0.5
+            "Outdoor temperature (°C)",
+            min_value=-30.0,
+            max_value=40.0,
+            value=float(outdoor_temp_fetched),
+            step=0.5,
         )
         outdoor_rh = st.number_input(
-            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=float(outdoor_rh_fetched), step=1.0
+            "Outdoor relative humidity (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(outdoor_rh_fetched),
+            step=1.0,
         )
     else:
         outdoor_temp = st.number_input(
-            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=10.0, step=0.5
+            "Outdoor temperature (°C)",
+            min_value=-30.0,
+            max_value=40.0,
+            value=10.0,
+            step=0.5,
         )
         outdoor_rh = st.number_input(
-            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=70.0, step=1.0
+            "Outdoor relative humidity (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=70.0,
+            step=1.0,
         )
 
 # Calculate dew points
@@ -325,7 +465,7 @@ if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
     all_table = [
         ["Now", label_6h, label_12h, "Indoor DP", "Outdoor DP", "HRV?"],
         [
-            f"{outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%" if outdoor_temp_fetched is not None else "",
+            (f"{outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%" if outdoor_temp_fetched is not None else ""),
             f"{forecast_6h[0]:.1f}°C, {forecast_6h[1]:.0f}%" if forecast_6h else "",
             f"{forecast_12h[0]:.1f}°C, {forecast_12h[1]:.0f}%" if forecast_12h else "",
             f"{indoor_dp:.1f}°C",
