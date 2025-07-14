@@ -197,23 +197,23 @@ debug_info = st.session_state["debug_info"]
 # Always define the input fields, dew point calculations, and plot before the weather fetch result check
 col1, col2 = st.columns(2)
 with col1:
-    indoor_temp = st.number_input("Indoor temperature (°C)", min_value=0.0, max_value=40.0, value=25.0, step=0.1)
-    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=0.1)
+    indoor_temp = st.number_input("Indoor temperature (°C)", min_value=0.0, max_value=40.0, value=25.0, step=0.5)
+    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
 with col2:
     # If fetched values exist, use them as defaults
     if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
         outdoor_temp = st.number_input(
-            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=float(outdoor_temp_fetched), step=0.1
+            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=float(outdoor_temp_fetched), step=0.5
         )
         outdoor_rh = st.number_input(
-            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=float(outdoor_rh_fetched), step=0.1
+            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=float(outdoor_rh_fetched), step=1.0
         )
     else:
         outdoor_temp = st.number_input(
-            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=10.0, step=0.1
+            "Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=10.0, step=0.5
         )
         outdoor_rh = st.number_input(
-            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1
+            "Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=70.0, step=1.0
         )
 
 # Calculate dew points
