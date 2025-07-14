@@ -1,8 +1,9 @@
 # to run locally: go to app folder and: streamlit run dew-point-vent-app.py
 
-# This script is a simple tool to help you decide whether to ventilate your home based on the current indoor and outdoor conditions.
+# This Streamlit app helps you decide whether to run HRV, based on indoor and outdoor temp and humidity.
 # It calculates the dew point for both indoor and outdoor and displays them in a heatmap.
-# It also provides a suggestion for HRV homeowners, based on the difference between the indoor and outdoor dew points.
+# It provides a suggestion for HRV homeowners, based on the difference between the indoor and outdoor dew points.
+# It also uses the OpenWeatherMap API to get the forecast for +6h and +12h.
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,7 +11,6 @@ import streamlit as st
 import requests
 import os
 from dotenv import load_dotenv
-import pandas as pd
 
 # ---------------------------------------------------------------------------
 # Load API key from .env file
@@ -151,6 +151,19 @@ st.markdown(
     """This tool helps you decide whether to ventilate your home with HRV, based on current indoor and outdoor conditions.\
 It calculates the dew point for both indoor and outdoor air and visualizes them on a heatmap.
 """
+)
+
+# Add compact CSS at the very top
+st.markdown(
+    """
+    <style>
+        .block-container { padding-top: 0.5rem !important; }
+        .stCaption, .stTable th, .stTable td { font-size: 0.85rem !important; padding: 2px 4px !important; }
+        .stDataFrame { font-size: 0.85rem !important; }
+        .element-container { margin-bottom: 0.2rem !important; }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 # --- Outdoor weather fetch ---
@@ -325,12 +338,8 @@ fig.update_layout(
 
 # Only show plot and results if the weather fetch was successful
 if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
-    # Compact outdoor weather table
-    weather_times = [
-        "Now",
-        forecast_6h[2][11:16] if forecast_6h else "",
-        forecast_12h[2][11:16] if forecast_12h else "",
-    ]
+    # Ultra-compact weather row
+    weather_times = ["Now", "+6h", "+12h"]
     weather_temps = [
         f"{outdoor_temp_fetched:.1f}°C" if outdoor_temp_fetched is not None else "",
         f"{forecast_6h[0]:.1f}°C" if forecast_6h else "",
@@ -341,29 +350,30 @@ if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
         f"{forecast_6h[1]:.0f}%" if forecast_6h else "",
         f"{forecast_12h[1]:.0f}%" if forecast_12h else "",
     ]
-    weather_df = pd.DataFrame(
-        {
-            "Time": weather_times,
-            "Temp (°C)": weather_temps,
-            "Humidity (%)": weather_humids,
-        }
-    )
-    st.caption("Outdoor weather (current, +6h, +12h)")
-    st.table(weather_df)
-    # Move Results above the plot
-    st.subheader("Results")
+    wcol1, wcol2, wcol3 = st.columns(3)
+    with wcol1:
+        st.caption(weather_times[0])
+        st.write(f"{weather_temps[0]}, {weather_humids[0]}")
+    with wcol2:
+        st.caption(weather_times[1])
+        st.write(f"{weather_temps[1]}, {weather_humids[1]}")
+    with wcol3:
+        st.caption(weather_times[2])
+        st.write(f"{weather_temps[2]}, {weather_humids[2]}")
+
+    # Ultra-compact results row
     rcol1, rcol2, rcol3 = st.columns(3)
     with rcol1:
-        st.markdown("**Indoor dew point**")
-        st.write(f"{indoor_dp:.2f}°C")
+        st.caption("Indoor DP")
+        st.write(f"{indoor_dp:.1f}°C")
     with rcol2:
-        st.markdown("**Outdoor dew point**")
-        st.write(f"{outdoor_dp:.2f}°C")
+        st.caption("Outdoor DP")
+        st.write(f"{outdoor_dp:.1f}°C")
     with rcol3:
         if outdoor_dp <= indoor_dp - 2:
-            st.success("✅ Ventilate")
+            st.success("Ventilate")
         else:
-            st.warning("❌ Do NOT ventilate")
+            st.warning("No vent")
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.error("City not found or API error.")
