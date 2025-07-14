@@ -320,8 +320,10 @@ fig.update_layout(
 # Only show plot and results if the weather fetch was successful
 if outdoor_temp_fetched is not None and outdoor_rh_fetched is not None:
     # Ultra-compact all-in-one table for mobile
+    label_6h = forecast_6h[2][11:16] if forecast_6h else ""
+    label_12h = forecast_12h[2][11:16] if forecast_12h else ""
     all_table = [
-        ["Now", "+6h", "+12h", "Indoor DP", "Outdoor DP", "Vent?"],
+        ["Now", label_6h, label_12h, "Indoor DP", "Outdoor DP", "Vent?"],
         [
             f"{outdoor_temp_fetched:.1f}°C, {outdoor_rh_fetched:.0f}%" if outdoor_temp_fetched is not None else "",
             f"{forecast_6h[0]:.1f}°C, {forecast_6h[1]:.0f}%" if forecast_6h else "",
