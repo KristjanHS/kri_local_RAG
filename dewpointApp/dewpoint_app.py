@@ -118,8 +118,8 @@ def calculate_dew_point(temp_c: float, rh: float) -> float:
 # ---------------------------------------------------------------------------
 # Grid definition — higher resolution for "middle" values
 # ---------------------------------------------------------------------------
-temperatures = np.arange(15.0, 28.5, 1.0)  # 1 °C steps for finer precision
-humidities = np.arange(50.0, 79.0, 4)  # 4 % RH steps
+temperatures = np.arange(15.0, 28.5, 2.0)  # 1 °C steps for finer precision
+humidities = np.arange(50.0, 100.0, 8)  # 4 % RH steps
 
 # Compute dew‑point matrix
 dew_points = np.empty((len(humidities), len(temperatures)))
