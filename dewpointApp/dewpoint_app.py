@@ -12,7 +12,7 @@ import streamlit as st
 import requests
 import os
 from dotenv import load_dotenv
-from streamlit_geolocation import streamlit_geolocation
+from streamlit_js_eval import streamlit_js_eval
 
 # ---------------------------------------------------------------------------
 # Load API key from .env file
@@ -22,7 +22,7 @@ load_dotenv()
 # Try Streamlit secrets first, then environment variable (for local .env)
 OPENWEATHER_API_KEY = st.secrets.get("OPENWEATHER_API_KEY") or os.getenv("OPENWEATHER_API_KEY")
 if not OPENWEATHER_API_KEY:
-    st.warning("OpenWeatherMap API key not found. Please add OPENWEATHER_API_KEY to your .env file.")
+    st.warning("OpenWeatherMap API key not found. Please add OPENWEATHER_API_KEY to your .streamlit/secrets.toml file.")
 
 
 def get_weather(city, api_key):
@@ -186,15 +186,32 @@ def reverse_geocode(lat, lon):
     return None
 
 
+def get_js_geolocation():
+    js_code = """
+    new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude
+                }),
+                (err) => resolve({latitude: null, longitude: null, error: err.message})
+            );
+        } else {
+            resolve({latitude: null, longitude: null, error: 'Geolocation not supported'});
+        }
+    })
+    """
+    return streamlit_js_eval(js_expressions=js_code, key="js_geo")
+
+
 # --- Outdoor weather fetch ---
-# Try to get user location via geolocation
-loc = streamlit_geolocation()
-st.write(f"DEBUG: geolocation() returned: {loc}")  # Show raw geolocation result for debugging
+# Try to get user location via JS eval
+loc = get_js_geolocation()
+st.write(f"DEBUG: js geolocation returned: {loc}")  # Show raw geolocation result for debugging
 use_gps = False
 location_name = None
-if loc is None:
-    st.info("Waiting for location permission...")
-elif loc.get("latitude") and loc.get("longitude"):
+if loc and loc.get("latitude") and loc.get("longitude"):
     lat = loc["latitude"]
     lon = loc["longitude"]
     location_name = reverse_geocode(lat, lon)
@@ -203,6 +220,8 @@ elif loc.get("latitude") and loc.get("longitude"):
     else:
         st.success(f"Detected location: {lat:.4f}, {lon:.4f}")
     use_gps = True
+elif loc and loc.get("error"):
+    st.warning(f"Geolocation error: {loc['error']}")
 else:
     st.info("Allow location access to auto-detect your weather, or enter a city name below.")
 

@@ -2,4 +2,4 @@ streamlit
 plotly
 numpy
 python-dotenv
-streamlit-geolocation
+streamlit_js_eval
