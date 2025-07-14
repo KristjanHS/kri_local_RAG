@@ -46,11 +46,11 @@ It calculates the dew point for both indoor and outdoor air and visualizes them 
 
 col1, col2 = st.columns(2)
 with col1:
-    indoor_temp = st.number_input("Indoor temperature (°C)", min_value=0.0, max_value=40.0, value=21.0, step=0.1)
-    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
+    indoor_temp = st.number_input("Indoor temperature (°C)", min_value=10.0, max_value=40.0, value=25.0, step=0.5)
+    indoor_rh = st.number_input("Indoor relative humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
 with col2:
-    outdoor_temp = st.number_input("Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=10.0, step=0.1)
-    outdoor_rh = st.number_input("Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=70.0, step=0.1)
+    outdoor_temp = st.number_input("Outdoor temperature (°C)", min_value=-30.0, max_value=40.0, value=20.0, step=0.5)
+    outdoor_rh = st.number_input("Outdoor relative humidity (%)", min_value=0.0, max_value=100.0, value=65.0, step=1.0)
 
 # Calculate dew points
 indoor_dp = calculate_dew_point(indoor_temp, indoor_rh)
@@ -87,15 +87,35 @@ fig.update_layout(
     template="plotly_white",
 )
 
+# Reduce the number of tick labels on both axes
+x_tick_step = 2  # Show every 2nd temperature
+y_tick_step = 4  # Show every 4th humidity
+
 fig.update_xaxes(
-    tickvals=temperatures,
-    ticktext=[f"{t:.1f}" for t in temperatures],
+    tickvals=temperatures[::x_tick_step],
+    ticktext=[f"{t:.1f}" for t in temperatures[::x_tick_step]],
     tickangle=0,
+    title_font=dict(size=20),  # Increase axis label font size
+    tickfont=dict(size=16),  # Increase tick label font size
 )
 fig.update_yaxes(
-    tickvals=humidities,
-    ticktext=[f"{h:.0f}" for h in humidities],
+    tickvals=humidities[::y_tick_step],
+    ticktext=[f"{h:.0f}" for h in humidities[::y_tick_step]],
+    title_font=dict(size=20),  # Increase axis label font size
+    tickfont=dict(size=16),  # Increase tick label font size
 )
+
+# Reduce the number of text labels inside the heatmap for readability
+sparse_text_labels = np.empty_like(text_labels, dtype=object)
+for i in range(len(humidities)):
+    for j in range(len(temperatures)):
+        if i % y_tick_step == 0 and j % x_tick_step == 0:
+            sparse_text_labels[i, j] = text_labels[i, j]
+        else:
+            sparse_text_labels[i, j] = ""
+
+# Update the heatmap trace to use sparse_text_labels
+fig.data[0].text = sparse_text_labels
 
 # Add large dots for indoor and outdoor points with offset text positions
 fig.add_trace(
