@@ -146,25 +146,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.title("Dew Point Ventilation Advisor")
-st.markdown(
-    """This tool helps you decide whether to ventilate your home with HRV, based on current indoor and outdoor conditions.\
-It calculates the dew point for both indoor and outdoor air and visualizes them on a heatmap.
-"""
-)
-
-# Add compact CSS at the very top
-st.markdown(
-    """
-    <style>
-        .block-container { padding-top: 0.5rem !important; }
-        .stCaption, .stTable th, .stTable td { font-size: 0.85rem !important; padding: 2px 4px !important; }
-        .stDataFrame { font-size: 0.85rem !important; }
-        .element-container { margin-bottom: 0.2rem !important; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 # --- Outdoor weather fetch ---
 # st.markdown("### Get outdoor weather for your city")
@@ -379,3 +360,13 @@ else:
     st.error("City not found or API error.")
     if debug_info:
         st.code(debug_info, language="text")
+
+# After the plot and results, add the title and description at the end
+st.title("Dew Point Ventilation Advisor")
+st.markdown(
+    """
+This app is a simple tool to help you decide whether to ventilate your home based on the indoor and outdoor conditions.\
+It calculates the dew point for both indoor and outdoor and displays them in a heatmap.\
+It also provides a suggestion for HRV homeowners, based on the difference between the indoor and outdoor dew points.
+"""
+)
