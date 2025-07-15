@@ -27,10 +27,11 @@ from typing import List
 
 import weaviate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from weaviate.util import generate_uuid5
 from weaviate.exceptions import UnexpectedStatusCodeError
 
 from config import COLLECTION_NAME, CHUNK_SIZE, CHUNK_OVERLAP
+
+import hashlib
 
 # Lightweight language detection
 try:
@@ -48,7 +49,9 @@ except ImportError:
 PdfReader = None
 
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
+)
 
 # ---------- helpers ----------------------------------------------------------------
 
@@ -61,7 +64,9 @@ def extract_text(path: str) -> str:
         els = partition_pdf(filename=path)
         return "\n".join([e.text for e in els if getattr(e, "text", None)])
     except Exception as err:
-        print(f"[Error] Failed to parse {os.path.basename(path)} with unstructured: {err}")
+        print(
+            f"[Error] Failed to parse {os.path.basename(path)} with unstructured: {err}"
+        )
         return ""
 
 
@@ -80,6 +85,11 @@ def ensure_collection(client: weaviate.WeaviateClient):
     return client.collections.get(COLLECTION_NAME)
 
 
+def deterministic_uuid(source_file, chunk_index, chunk_content):
+    base = f"{source_file}:{chunk_index}:{chunk_content}"
+    return hashlib.md5(base.encode("utf-8")).hexdigest()
+
+
 # ---------- ingestion logic ---------------------------------------------------------
 
 
@@ -89,7 +99,7 @@ def process_pdf(path: str, docs, stats: dict[str, int]):
     stats["chunks"] += len(chunks)
     # Use a UUID that is independent of *content* so we can detect edits.
     for i, chunk in enumerate(chunks):
-        uuid = generate_uuid5(f"{os.path.basename(path)}:{i}")
+        uuid = deterministic_uuid(os.path.basename(path), i, chunk)
         # Basic metadata enrichment
         created_ts = os.path.getmtime(path)
         created_iso = datetime.fromtimestamp(created_ts).isoformat()
@@ -164,8 +174,12 @@ def ingest(directory: str):
 
 # ---------- CLI ---------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Ingest PDFs into Weaviate and print statistics.")
-    parser.add_argument("--data-dir", default="../data", help="Directory with PDF files.")
+    parser = argparse.ArgumentParser(
+        description="Ingest PDFs into Weaviate and print statistics."
+    )
+    parser.add_argument(
+        "--data-dir", default="../data", help="Directory with PDF files."
+    )
     args = parser.parse_args()
 
     ingest(args.data_dir)
