@@ -28,8 +28,10 @@ from typing import List
 import weaviate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from weaviate.exceptions import UnexpectedStatusCodeError
+from weaviate.classes.config import Configure, Property, DataType
 
-from config import COLLECTION_NAME, CHUNK_SIZE, CHUNK_OVERLAP
+from config import COLLECTION_NAME, CHUNK_SIZE, CHUNK_OVERLAP, WEAVIATE_URL
+from urllib.parse import urlparse
 
 import hashlib
 
@@ -75,13 +77,37 @@ def list_pdfs(directory: str) -> List[str]:
 
 
 def connect() -> weaviate.WeaviateClient:
-    # Use local connection for v4 compatibility
-    return weaviate.connect_to_local()
+    parsed_url = urlparse(WEAVIATE_URL)
+    return weaviate.connect_to_custom(
+        http_host=parsed_url.hostname,
+        http_port=parsed_url.port or 80,
+        grpc_host=parsed_url.hostname,
+        grpc_port=50051,
+        http_secure=parsed_url.scheme == "https",
+        grpc_secure=parsed_url.scheme == "https",
+    )
 
 
-def ensure_collection(client: weaviate.WeaviateClient):
+def create_collection_if_not_exists(client: weaviate.WeaviateClient):
+    """Create the collection with a predefined schema if it doesn't exist."""
     if not client.collections.exists(COLLECTION_NAME):
-        client.collections.create(name=COLLECTION_NAME)
+        client.collections.create(
+            name=COLLECTION_NAME,
+            properties=[
+                Property(name="content", data_type=DataType.TEXT),
+                Property(name="source_file", data_type=DataType.TEXT),
+                Property(name="page", data_type=DataType.INT),
+                Property(name="source", data_type=DataType.TEXT),
+                Property(name="section", data_type=DataType.TEXT),
+                Property(name="created_at", data_type=DataType.DATE),
+                Property(name="language", data_type=DataType.TEXT),
+            ],
+            vectorizer_config=Configure.Vectorizer.text2vec_transformers(),
+        )
+        print(f"→ Collection '{COLLECTION_NAME}' created with the specified schema.")
+
+
+def get_collection(client: weaviate.WeaviateClient):
     return client.collections.get(COLLECTION_NAME)
 
 
@@ -154,7 +180,8 @@ def ingest(directory: str):
 
     client = connect()
     try:
-        docs = ensure_collection(client)
+        create_collection_if_not_exists(client)
+        docs = get_collection(client)
         for p in pdfs:
             print(f"→ {os.path.basename(p)}")
             process_pdf(p, docs, stats)

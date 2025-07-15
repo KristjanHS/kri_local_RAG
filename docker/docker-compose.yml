@@ -61,7 +61,7 @@ services:
       start_period: 10s
 
   # ---------- Local RAG Q&A loop - Python backend -----------------------------------------
-  rag-backend:
+  backend:
     build:
       context: ..  # project root
       dockerfile: docker/backend.Dockerfile

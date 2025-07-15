@@ -15,27 +15,31 @@ Local RAG system using Weaviate, Ollama, and Python.
 ## Installation & Startup
 
 ### First-Time Setup: run these parts one by one:
+
 ```bash
 # Part 1: Clone the repo and cd in:
 git clone https://github.com/KristjanHS/kri-local-rag
 cd kri-local-rag
+
 # Part 2: Set environment variables and build images:
 export COMPOSE_FILE=docker/docker-compose.yml  # Tells Docker Compose exactly which file to use.
 export COMPOSE_PROJECT_NAME=kri-local-rag  # Sets a custom name for your project.
 export BUILDKIT_PROGRESS=plain  # Ensures the Docker build output is shown as a continuous, plain-text log instead of the default progress bars.
 docker compose build --progress=plain 2>&1 | tee build.log
-  # The 2>&1 | tee build.log part is key: it pipes all output (both standard output and errors) to the tee command,
+# Wait until you see in the foreground that all builds completed successfully
+  # The "2>&1 | tee build.log" pipes all output (both standard output and errors) to the tee command,
   # which simultaneously displays it on your screen and saves it to a file named build.log.
 
 # Part 3: Start core services in the foreground (watch logs for errors or readiness):
 docker compose up weaviate t2v-transformers ollama
-# (Wait until you see in the logs that Weaviate and Ollama are ready. Don't use Ctrl+C to stop when done - see Part 4.
+# Wait until you see in the foreground that Weaviate and Ollama are ready. Use Ctrl+C to stop when services started up successfully.
 
-# Part 4: In a new terminal, start the backend that uses the servises:
-docker compose run --rm rag-backend     # The --rm flag tells Docker to Automatically remove the container after it exits.
-
+# Part 4: Start the services in background, and start backend automatically after services are responding:
+./run-docker.sh 
 ```
+
 ### Subsequent Launches
+
 After the initial build, you can use the helper script to start services and the backend. 
 This script will start services in the background and wait for them to be healthy before launching the backend:
 ```bash
@@ -45,13 +49,6 @@ This script will start services in the background and wait for them to be health
 For all other Docker usage, troubleshooting, and advanced commands, see [Docker Management Guide](docs/docker-management.md).
 
 ---
-
-## Using the System
-
-### Start the Console
-```bash
-./run-docker.sh
-```
 
 ### Ingest Documents
 ```bash
